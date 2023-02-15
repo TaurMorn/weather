@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -21,6 +22,8 @@ type WeatherResponse struct {
 }
 
 func main() {
+	fileServer := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	http.HandleFunc("/weather", weather)
 	http.ListenAndServe(":8091", nil)
 }
@@ -29,8 +32,9 @@ func weather(w http.ResponseWriter, r *http.Request) {
 	bytes := readBytesFromOpenWeather(lattitudeRiga, longitudeRiga)
 	genericData := bytesToGenericObject(bytes)
 	responseWeather := makeWeatherResponse("Riga", genericData)
-	responseBytes, _ := json.Marshal(responseWeather)
-	fmt.Fprint(w, string(responseBytes))
+
+	template := template.Must(template.ParseFiles("template/weather.html"))
+	template.Execute(w, responseWeather)
 }
 
 func readBytesFromOpenWeather(lat float64, long float64) []byte {
@@ -51,7 +55,8 @@ func bytesToGenericObject(bytes []byte) map[string]interface{} {
 	return dat
 }
 
-func kelvinToCelsius(kelvin float64) float64 {
+func kelvinToCelsius(
+	kelvin float64) float64 {
 	return kelvin - 273.15
 }
 
